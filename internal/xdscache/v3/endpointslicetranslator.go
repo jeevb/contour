@@ -105,6 +105,10 @@ func (c *EndpointSliceCache) RecalculateEndpoints(port, healthPort core_v1.Servi
 		}
 	}
 
+	if len(lb) < 1 {
+		lb = append(lb, envoy_v3.LBEndpoint(envoy_v3.SocketAddress("127.0.0.1", 12345)))
+	}
+
 	if healthCheckPort > 0 {
 		for _, lbEndpoint := range lb {
 			lbEndpoint.GetEndpoint().HealthCheckConfig = envoy_v3.HealthCheckConfig(healthCheckPort)
