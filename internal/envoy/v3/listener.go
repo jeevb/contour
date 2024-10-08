@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	xds_type_v3 "github.com/cncf/xds/go/xds/type/v3"
 	envoy_config_accesslog_v3 "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
 	envoy_config_core_v3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_config_listener_v3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
@@ -42,7 +43,10 @@ import (
 	envoy_type_v3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	envoy_filter_http_golang_v3alpha "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/http/golang/v3alpha"
 
 	contour_v1alpha1 "github.com/projectcontour/contour/apis/projectcontour/v1alpha1"
 	"github.com/projectcontour/contour/internal/dag"
@@ -387,6 +391,28 @@ func (b *httpConnectionManagerBuilder) DefaultFilters() *httpConnectionManagerBu
 			Name: RBACFilterName,
 			ConfigType: &envoy_filter_network_http_connection_manager_v3.HttpFilter_TypedConfig{
 				TypedConfig: protobuf.MustMarshalAny(&envoy_filter_http_rbac_v3.RBAC{}),
+			},
+		},
+		&envoy_filter_network_http_connection_manager_v3.HttpFilter{
+			Name: "envoy.filters.http.golang",
+			ConfigType: &envoy_filter_network_http_connection_manager_v3.HttpFilter_TypedConfig{
+				TypedConfig: protobuf.MustMarshalAny(&envoy_filter_http_golang_v3alpha.Config{
+					LibraryId:   "activator",
+					LibraryPath: "/lib/activator.so",
+					PluginName:  "activator",
+					PluginConfig: protobuf.MustMarshalAny(&xds_type_v3.TypedStruct{
+						TypeUrl: "type.googleapis.com/xds.type.v3.TypedStruct",
+						Value: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"redis_addr": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "redis.scaler:6379",
+									},
+								},
+							},
+						},
+					}),
+				}),
 			},
 		},
 		&envoy_filter_network_http_connection_manager_v3.HttpFilter{
